@@ -34,7 +34,7 @@ import (
 
 // Pool implements a worker pool
 type Pool[I, O any] struct {
-	inCh          chan I
+	inCh          chan processInput[I]
 	OutCh         chan O
 	ErrCh         chan error
 	doneWithInput *sync.WaitGroup
@@ -49,9 +49,15 @@ const new = PoolStatus("New")
 const started = PoolStatus("Started")
 const stopped = PoolStatus("Stopped")
 
+// processInput packs the input value and a context
+type processInput[I any] struct {
+	input I
+	ctx   context.Context
+}
+
 // New creates a Pool and returns a pointer to it
 func New[I, O any](size int, do func(ctx context.Context, input I) (O, error)) *Pool[I, O] {
-	inCh := make(chan I)
+	inCh := make(chan processInput[I])
 	outCh := make(chan O)
 	errCh := make(chan error)
 	var doneWithInput sync.WaitGroup
@@ -72,25 +78,33 @@ func (pool *Pool[I, O]) Start(ctx context.Context) {
 	for i := 0; i < pool.size; i++ {
 		go func() { // these workers complete when pool.inCh is closed
 			defer pool.doneWithInput.Done()
-			for input := range pool.inCh {
-				output, e := pool.do(ctx, input)
-				if e != nil {
-					if ctx.Err() != nil {
-						// it the context has signalled a termination signal, exit the worker
+			for {
+				select {
+				case input, more := <-pool.inCh:
+					if !more {
 						return
 					}
-					pool.ErrCh <- e
-					continue
+					output, e := pool.do(input.ctx, input.input)
+					if e != nil {
+						if ctx.Err() != nil {
+							// it the context has signalled a termination signal, exit the worker
+							return
+						}
+						pool.ErrCh <- e
+						continue
+					}
+					pool.OutCh <- output
+				case <-ctx.Done():
+					return
 				}
-				pool.OutCh <- output
 			}
 		}()
 	}
 }
 
 // Process sends one value to the pool to be processed by the first available worker.
-func (pool *Pool[I, O]) Process(input I) {
-	pool.inCh <- input
+func (pool *Pool[I, O]) Process(ctx context.Context, input I) {
+	pool.inCh <- processInput[I]{input, ctx}
 }
 
 // Stop stops the pool

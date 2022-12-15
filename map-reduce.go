@@ -47,7 +47,7 @@ func MapReduce[I, O, R any](
 	go func() {
 		defer pool.Stop()
 		for _, v := range inputValues {
-			pool.Process(v)
+			pool.Process(ctx, v)
 			if ctx.Err() != nil {
 				return
 			}

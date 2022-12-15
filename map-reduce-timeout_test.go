@@ -71,7 +71,7 @@ func TestMapReduceWithTimeoutWorkersRunning(t *testing.T) {
 		// we simulate the work of the worker with a timer
 		case <-timer.C: // timer fired, i.e. the worker has performed its task
 			taskComplete = true
-			mapResult := input / 10 // just do an operation - the result of the mapping is not important for the test
+			mapResult := input * 10 // just do an operation - the result of the mapping is not important for the test
 			return mapResult, nil
 		case <-ctx.Done(): // the timeout signal is received
 			return 0, ctx.Err()

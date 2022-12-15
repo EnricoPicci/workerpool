@@ -43,7 +43,7 @@ func TestPool(t *testing.T) {
 	go func() {
 		defer pool.Stop()
 		for i := 0; i < numOfInputSentToPool; i++ {
-			pool.Process(i)
+			pool.Process(ctx, i)
 		}
 	}()
 
@@ -129,7 +129,7 @@ func TestPoolOneWorker(t *testing.T) {
 	go func() {
 		defer pool.Stop()
 		for i := 0; i < numOfInputSentToPool; i++ {
-			pool.Process(i)
+			pool.Process(ctx, i)
 		}
 	}()
 

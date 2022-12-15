@@ -31,7 +31,7 @@ func TestMapReduceWithTimeoutPoolStatus(t *testing.T) {
 		for _, v := range valuesToReduce {
 			select {
 			default:
-				pool.Process(v)
+				pool.Process(_ctx, v)
 			case <-ctx.Done():
 				return
 			}

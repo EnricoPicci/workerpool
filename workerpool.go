@@ -37,19 +37,17 @@ type Pool[I, O any] struct {
 	inCh          chan I
 	OutCh         chan O
 	ErrCh         chan error
-	ctx           context.Context
 	doneWithInput *sync.WaitGroup
-	done          *sync.WaitGroup
 	size          int
 	do            func(context.Context, I) (O, error)
 	mu            *sync.Mutex
-	status        poolStatus
+	status        PoolStatus
 }
-type poolStatus string
+type PoolStatus string
 
-const new = poolStatus("New")
-const started = poolStatus("Started")
-const stopped = poolStatus("Stopped")
+const new = PoolStatus("New")
+const started = PoolStatus("Started")
+const stopped = PoolStatus("Stopped")
 
 // New creates a Pool and returns a pointer to it
 func New[I, O any](size int, do func(ctx context.Context, input I) (O, error)) *Pool[I, O] {
@@ -58,10 +56,8 @@ func New[I, O any](size int, do func(ctx context.Context, input I) (O, error)) *
 	errCh := make(chan error)
 	var doneWithInput sync.WaitGroup
 	doneWithInput.Add(size)
-	var doneWithReduce sync.WaitGroup
-	doneWithReduce.Add(1)
 	var mu sync.Mutex
-	pool := Pool[I, O]{inCh, outCh, errCh, context.Background(), &doneWithInput, &doneWithReduce, size, do, &mu, new}
+	pool := Pool[I, O]{inCh, outCh, errCh, &doneWithInput, size, do, &mu, new}
 	return &pool
 }
 
@@ -72,10 +68,9 @@ func (pool *Pool[I, O]) Start(ctx context.Context) {
 		return
 	}
 	pool.status = started
-	pool.ctx = ctx
 	pool.mu.Unlock()
 	for i := 0; i < pool.size; i++ {
-		go func() {
+		go func() { // these workers complete when pool.inCh is closed
 			defer pool.doneWithInput.Done()
 			for input := range pool.inCh {
 				output, e := pool.do(ctx, input)
@@ -94,13 +89,8 @@ func (pool *Pool[I, O]) Start(ctx context.Context) {
 }
 
 // Process sends one value to the pool to be processed by the first available worker.
-// If the pool context signals a termination, then the process terminates
 func (pool *Pool[I, O]) Process(input I) {
-	select {
-	case pool.inCh <- input:
-	case <-pool.ctx.Done():
-		return
-	}
+	pool.inCh <- input
 }
 
 // Stop stops the pool
@@ -119,6 +109,13 @@ func (pool *Pool[I, O]) Stop() {
 	// close the output and the error channels
 	close(pool.OutCh)
 	close(pool.ErrCh)
+}
 
-	pool.done.Done()
+// GetStatus returns the status of the pool
+func (pool *Pool[I, O]) GetStatus() PoolStatus {
+	var st PoolStatus
+	pool.mu.Lock()
+	st = pool.status
+	pool.mu.Unlock()
+	return st
 }

@@ -83,7 +83,6 @@ func reduce[I, O, R any](ctx context.Context, pool *Pool[I, O], reducer func(R, 
 			break
 		}
 	}
-	pool.done.Wait()
 
 	if len(errors) > 0 {
 		err = ReduceError{errors}

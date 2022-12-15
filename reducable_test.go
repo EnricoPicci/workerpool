@@ -11,7 +11,7 @@ import (
 func TestReduceableMapReduceSumOfNumbers(t *testing.T) {
 	// values that have to be reduced
 	numOfValuesToReduce := 10
-	values := sliceOfIntegersAsStrings(numOfValuesToReduce)
+	values := workerpool.SliceOfIntegersAsStrings(numOfValuesToReduce)
 	reduceable := workerpool.Reducable[string, int, int](values)
 
 	// parameters
@@ -19,7 +19,7 @@ func TestReduceableMapReduceSumOfNumbers(t *testing.T) {
 	accInitialValue := 0
 
 	// Reduce the results into an accumulator
-	sum, err := reduceable.MapReduce(context.Background(), mapStringToInt, sumNumbers, accInitialValue, concurrent)
+	sum, err := reduceable.MapReduce(context.Background(), workerpool.MapStringToInt, workerpool.SumNumbers, accInitialValue, concurrent)
 
 	// check the results of the test
 	expectedNumOfErrors := 1
@@ -32,7 +32,7 @@ func TestReduceableMapReduceSumOfNumbers(t *testing.T) {
 
 	// chech that the sum of the results received (once each result is converted back to a number) is right
 	// https://www.vedantu.com/question-answer/the-formula-of-the-sum-of-first-n-natural-class-11-maths-cbse-5ee862757190f464f77a1c68
-	expectedSum := numOfValuesToReduce*(numOfValuesToReduce-1)/2 - numGeneratingError
+	expectedSum := numOfValuesToReduce*(numOfValuesToReduce-1)/2 - workerpool.NumGeneratingError
 	gotSum := sum
 	if expectedSum != gotSum {
 		t.Errorf("Expected sum %v - got %v", expectedSum, gotSum)

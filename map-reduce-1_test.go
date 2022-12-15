@@ -12,13 +12,13 @@ import (
 func TestMapReduceSumOfNumbers(t *testing.T) {
 	// values that have to be reduced
 	numOfValuesToReduce := 10
-	valuesToReduce := sliceOfIntegersAsStrings(numOfValuesToReduce)
+	valuesToReduce := workerpool.SliceOfIntegersAsStrings(numOfValuesToReduce)
 
 	concurrent := 1
 	// initial value of the accumulator to pass to the Reduce function
 	accInitialValue := 0
 	// Reduce the results into an accumulator
-	sum, err := workerpool.MapReduce(context.Background(), concurrent, valuesToReduce, mapStringToInt, sumNumbers, accInitialValue)
+	sum, err := workerpool.MapReduce(context.Background(), concurrent, valuesToReduce, workerpool.MapStringToInt, workerpool.SumNumbers, accInitialValue)
 
 	// check the results of the test
 	expectedNumOfErrors := 1
@@ -31,7 +31,7 @@ func TestMapReduceSumOfNumbers(t *testing.T) {
 
 	// chech that the sum of the results received (once each result is converted back to a number) is right
 	// https://www.vedantu.com/question-answer/the-formula-of-the-sum-of-first-n-natural-class-11-maths-cbse-5ee862757190f464f77a1c68
-	expectedSum := numOfValuesToReduce*(numOfValuesToReduce-1)/2 - numGeneratingError
+	expectedSum := numOfValuesToReduce*(numOfValuesToReduce-1)/2 - workerpool.NumGeneratingError
 	gotSum := sum
 	if expectedSum != gotSum {
 		t.Errorf("Expected sum %v - got %v", expectedSum, gotSum)
@@ -43,7 +43,7 @@ func TestMapReduceSumOfNumbers(t *testing.T) {
 func mapStringToIntErr(ctx context.Context, input string) (int, error) {
 	n, err := strconv.Atoi(input)
 	if err != nil {
-		return 0, convError
+		return 0, workerpool.ConvError
 	}
 	return n, nil
 }
@@ -59,7 +59,7 @@ func TestMapReduceAllErrors(t *testing.T) {
 	// initial value of the accumulator to pass to the Reduce function
 	accInitialValue := 0
 	// Reduce the results into an accumulator
-	sum, err := workerpool.MapReduce(context.Background(), concurrent, valuesToReduce, mapStringToIntErr, sumNumbers, accInitialValue)
+	sum, err := workerpool.MapReduce(context.Background(), concurrent, valuesToReduce, mapStringToIntErr, workerpool.SumNumbers, accInitialValue)
 
 	// check the results of the test
 	expectedNumOfErrors := numOfValuesToReduce
@@ -97,7 +97,7 @@ func TestMapReduceAllErrorsPoolSize_1(t *testing.T) {
 	// initial value of the accumulator to pass to the Reduce function
 	accInitialValue := 0
 	// Reduce the results into an accumulator
-	sum, err := workerpool.MapReduce(context.Background(), concurrent, valuesToReduce, mapStringToIntErr, sumNumbers, accInitialValue)
+	sum, err := workerpool.MapReduce(context.Background(), concurrent, valuesToReduce, mapStringToIntErr, workerpool.SumNumbers, accInitialValue)
 
 	// check the results of the test
 	expectedNumOfErrors := numOfValuesToReduce

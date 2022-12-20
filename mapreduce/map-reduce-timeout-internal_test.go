@@ -1,10 +1,14 @@
 // this test is in the workerpool package since we want to test the internal status of the pool
-package workerpool
+package mapreduce
 
 import (
 	"context"
+	"errors"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/EnricoPicci/workerpool"
 )
 
 // In this test a timeout is triggered and the reduce is stopped
@@ -19,7 +23,7 @@ func TestMapReduceWithTimeoutPoolStatus(t *testing.T) {
 	// parameters to constuct the pool
 	poolSize := 10
 	// construct the pool
-	pool := New(poolSize, MapStringToInt)
+	pool := workerpool.New(poolSize, MapStringToInt)
 	pool.Start(ctx)
 
 	// values that have to be reduced
@@ -31,7 +35,7 @@ func TestMapReduceWithTimeoutPoolStatus(t *testing.T) {
 		for _, v := range valuesToReduce {
 			select {
 			default:
-				pool.Process(_ctx, v)
+				pool.Process(v)
 			case <-ctx.Done():
 				return
 			}
@@ -54,10 +58,36 @@ func TestMapReduceWithTimeoutPoolStatus(t *testing.T) {
 	if expectedError != gotError {
 		t.Errorf("Expected error %v - got %v", expectedError, gotError)
 	}
-	expectedPoolStatus := stopped
+	expectedPoolStatus := workerpool.Stopped
 	gotStatus := pool.GetStatus()
 	if expectedPoolStatus != gotStatus {
 		t.Errorf("Expected pool status (the pool should have been closed as consequence of the context timeout triggering) %v - got %v",
 			expectedPoolStatus, gotStatus)
 	}
+}
+
+// this is the function that is passed to the worker pool to perform the processing
+var NumGeneratingError = 5
+var ConvError = errors.New("Error occurred while processing")
+
+func MapStringToInt(input string) (int, error) {
+	n, _ := strconv.Atoi(input)
+	if n == NumGeneratingError {
+		return 0, ConvError
+	}
+	return n, nil
+}
+
+// define the reducer function
+func SumNumbers(acc int, val int) int {
+	acc = acc + val
+	return acc
+}
+
+func SliceOfIntegersAsStrings(numOfValuesSentToPool int) []string {
+	inputValues := make([]string, numOfValuesSentToPool)
+	for i := range inputValues {
+		inputValues[i] = strconv.Itoa(i)
+	}
+	return inputValues
 }

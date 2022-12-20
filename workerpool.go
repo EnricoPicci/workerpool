@@ -34,30 +34,24 @@ import (
 
 // Pool implements a worker pool
 type Pool[I, O any] struct {
-	inCh          chan processInput[I]
+	inCh          chan I
 	OutCh         chan O
 	ErrCh         chan error
 	doneWithInput *sync.WaitGroup
 	size          int
-	do            func(context.Context, I) (O, error)
+	do            func(I) (O, error)
 	mu            *sync.Mutex
 	status        PoolStatus
 }
 type PoolStatus string
 
 const new = PoolStatus("New")
-const started = PoolStatus("Started")
-const stopped = PoolStatus("Stopped")
-
-// processInput packs the input value and a context
-type processInput[I any] struct {
-	input I
-	ctx   context.Context
-}
+const Started = PoolStatus("Started")
+const Stopped = PoolStatus("Stopped")
 
 // New creates a Pool and returns a pointer to it
-func New[I, O any](size int, do func(ctx context.Context, input I) (O, error)) *Pool[I, O] {
-	inCh := make(chan processInput[I])
+func New[I, O any](size int, do func(input I) (O, error)) *Pool[I, O] {
+	inCh := make(chan I)
 	outCh := make(chan O)
 	errCh := make(chan error)
 	var doneWithInput sync.WaitGroup
@@ -70,10 +64,10 @@ func New[I, O any](size int, do func(ctx context.Context, input I) (O, error)) *
 // Start starts the pool
 func (pool *Pool[I, O]) Start(ctx context.Context) {
 	pool.mu.Lock()
-	if pool.status == started {
+	if pool.status == Started {
 		return
 	}
-	pool.status = started
+	pool.status = Started
 	pool.mu.Unlock()
 	for i := 0; i < pool.size; i++ {
 		go func() { // these workers complete when pool.inCh is closed
@@ -84,7 +78,7 @@ func (pool *Pool[I, O]) Start(ctx context.Context) {
 					if !more {
 						return
 					}
-					output, e := pool.do(input.ctx, input.input)
+					output, e := pool.do(input)
 					if e != nil {
 						if ctx.Err() != nil {
 							// it the context has signalled a termination signal, exit the worker
@@ -103,18 +97,18 @@ func (pool *Pool[I, O]) Start(ctx context.Context) {
 }
 
 // Process sends one value to the pool to be processed by the first available worker.
-func (pool *Pool[I, O]) Process(ctx context.Context, input I) {
-	pool.inCh <- processInput[I]{input, ctx}
+func (pool *Pool[I, O]) Process(input I) {
+	pool.inCh <- input
 }
 
 // Stop stops the pool
 // After the pool is stopped no other input value can be processed
 func (pool *Pool[I, O]) Stop() {
 	pool.mu.Lock()
-	if pool.status == stopped {
+	if pool.status == Stopped {
 		return
 	}
-	pool.status = stopped
+	pool.status = Stopped
 	pool.mu.Unlock()
 	// close the input channel
 	close(pool.inCh)

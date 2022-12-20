@@ -1,5 +1,5 @@
 // this test is in the workerpool package since we want to test the internal status of the pool
-package workerpool_test
+package mapreduce_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/EnricoPicci/workerpool"
+	"github.com/EnricoPicci/workerpool/mapreduce"
 )
 
 // In this test a timeout is triggered and the MapReduce is stopped
@@ -19,14 +19,14 @@ func TestMapReduceWithTimeout(t *testing.T) {
 
 	// values that have to be reduced
 	numOfValuesToReduce := 200000
-	valuesToReduce := workerpool.SliceOfIntegersAsStrings(numOfValuesToReduce)
+	valuesToReduce := SliceOfIntegersAsStrings(numOfValuesToReduce)
 
 	concurrent := 10
 	// initial value of the accumulator to pass to the Reduce function
 	accInitialValue := 0
 	// Reduce the results into an accumulator
 	// Since the timeout is fired before the end of the processing, the errors slice should contain 1 error
-	sum, err := workerpool.MapReduce(ctx, concurrent, valuesToReduce, workerpool.MapStringToInt, workerpool.SumNumbers, accInitialValue)
+	sum, err := mapreduce.MapReduce(ctx, concurrent, valuesToReduce, MapStringToInt, SumNumbers, accInitialValue)
 	t.Log(">>>>>>>>> Value of sum when reduce returns after deadline is triggered", sum)
 
 	// check the results of the test
@@ -62,7 +62,11 @@ func TestMapReduceWithTimeoutWorkersRunning(t *testing.T) {
 
 	var testMu sync.Mutex
 
-	mapper := func(ctx context.Context, input int) (int, error) {
+	// a context with a timeout that is triggered with a not so short delay
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	mapper := func(input int) (int, error) {
 		testMu.Lock()
 		mapperStarted = true
 		testMu.Unlock()
@@ -78,15 +82,11 @@ func TestMapReduceWithTimeoutWorkersRunning(t *testing.T) {
 		}
 	}
 
-	// a context with a timeout that is triggered with a not so short delay
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
 	concurrent := 4
 	// initial value of the accumulator to pass to the Reduce function
 	accInitialValue := 0
 	// Call MapReduce - since the context timeout is fired before the mapper is able to complete its mapping work, there should be a non nil error
-	_, err := workerpool.MapReduce(ctx, concurrent, []int{0, 1, 2, 3, 4, 5, 6}, mapper, workerpool.SumNumbers, accInitialValue)
+	_, err := mapreduce.MapReduce(ctx, concurrent, []int{0, 1, 2, 3, 4, 5, 6}, mapper, SumNumbers, accInitialValue)
 
 	// wait to make sure that, if the mappers have not been terminated by the context timeout, they have the time to set the taskComplete to true
 	time.Sleep(testDelay)

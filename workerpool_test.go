@@ -24,7 +24,7 @@ func TestPool(t *testing.T) {
 
 	// parameters to constuct the pool
 	poolSize := 1000
-	do := func(ctx context.Context, in int) (string, error) {
+	do := func(in int) (string, error) {
 		// simulates that for certain values an error is returned
 		if in == numberGeneratingError {
 			return "", conversionError
@@ -43,7 +43,7 @@ func TestPool(t *testing.T) {
 	go func() {
 		defer pool.Stop()
 		for i := 0; i < numOfInputSentToPool; i++ {
-			pool.Process(ctx, i)
+			pool.Process(i)
 		}
 	}()
 
@@ -110,7 +110,7 @@ func TestPoolOneWorker(t *testing.T) {
 
 	// parameters to constuct the pool
 	poolSize := 1
-	do := func(ctx context.Context, in int) (string, error) {
+	do := func(in int) (string, error) {
 		// simulates that for certain values an error is returned
 		if in == numberGeneratingError {
 			return "", conversionError
@@ -129,7 +129,7 @@ func TestPoolOneWorker(t *testing.T) {
 	go func() {
 		defer pool.Stop()
 		for i := 0; i < numOfInputSentToPool; i++ {
-			pool.Process(ctx, i)
+			pool.Process(i)
 		}
 	}()
 

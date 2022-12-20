@@ -1,4 +1,4 @@
-package workerpool_test
+package mapreduce_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/EnricoPicci/workerpool"
+	"github.com/EnricoPicci/workerpool/mapreduce"
 )
 
 func TestReduce(t *testing.T) {
@@ -18,7 +19,7 @@ func TestReduce(t *testing.T) {
 
 	// parameters to constuct the pool
 	poolSize := 1000
-	do := func(ctx context.Context, in int) (string, error) {
+	do := func(in int) (string, error) {
 		// simulates that for certain values an error is returned
 		if in == numberGeneratingError {
 			return "", conversionError
@@ -38,7 +39,7 @@ func TestReduce(t *testing.T) {
 	go func() {
 		defer pool.Stop()
 		for i := 0; i < numOfInputSentToPool; i++ {
-			pool.Process(ctx, i)
+			pool.Process(i)
 		}
 	}()
 
@@ -50,11 +51,11 @@ func TestReduce(t *testing.T) {
 		return acc
 	}
 	// Reduce the results into an accumulator
-	resultsReceived, err := workerpool.Reduce(context.Background(), pool, reducer, accInitialValue)
+	resultsReceived, err := mapreduce.Reduce(context.Background(), pool, reducer, accInitialValue)
 
 	// check the results of the test
 	expectedNumOfErrors := 1
-	reduceErr := err.(workerpool.ReduceError)
+	reduceErr := err.(mapreduce.ReduceError)
 	gotNumOfErrors := len(reduceErr.Errors)
 	expectedNumOfResults := numOfInputSentToPool - expectedNumOfErrors
 	gotNumOfResults := len(resultsReceived)

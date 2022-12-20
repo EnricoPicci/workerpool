@@ -1,25 +1,12 @@
-package workerpool_test
+package mapreduce_test
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"strconv"
 	"testing"
 
-	"github.com/EnricoPicci/workerpool"
+	"github.com/EnricoPicci/workerpool/mapreduce"
 )
-
-// this is the function that is passed to the worker pool to perform the processing
-var numberGeneratingError = 4
-var conversionError = errors.New("Error occurred while processing")
-
-func mapIntToString(ctx context.Context, input int) (string, error) {
-	if input == numberGeneratingError {
-		return "", conversionError
-	}
-	return fmt.Sprintf("%v", input), nil
-}
 
 // define the reducer function
 func reducer(acc []string, res string) []string {
@@ -39,11 +26,11 @@ func TestMapReduce(t *testing.T) {
 	// initial value of the accumulator to pass to the Reduce function
 	accInitialValue := []string{}
 	// Reduce the results into an accumulator
-	resultsReceived, err := workerpool.MapReduce(context.Background(), concurrent, valuesToReduce, mapIntToString, reducer, accInitialValue)
+	resultsReceived, err := mapreduce.MapReduce(context.Background(), concurrent, valuesToReduce, mapIntToString, reducer, accInitialValue)
 
 	// check the results of the test
 	expectedNumOfErrors := 1
-	reduceErr := err.(workerpool.ReduceError)
+	reduceErr := err.(mapreduce.ReduceError)
 	errors := reduceErr.Errors
 	gotNumOfErrors := len(errors)
 	expectedNumOfResults := numOfValuesToReduce - expectedNumOfErrors
